@@ -67,7 +67,7 @@ export default function SettingsPage() {
       
       setSaveMessage('設定が保存されました');
       setTimeout(() => setSaveMessage(''), 3000);
-    } catch (error) {
+    } catch {
       setSaveMessage('保存中にエラーが発生しました');
       setTimeout(() => setSaveMessage(''), 3000);
     } finally {
@@ -75,7 +75,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleInputChange = (section: keyof Settings, key: string, value: any) => {
+  const handleInputChange = (section: keyof Settings, key: string, value: string | number | boolean) => {
     setSettings(prev => ({
       ...prev,
       [section]: {

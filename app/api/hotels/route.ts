@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { mockHotels } from '@/mocks/data';
 
 export async function GET() {

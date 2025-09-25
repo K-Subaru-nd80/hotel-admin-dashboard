@@ -130,6 +130,44 @@ npm test
 - TemperatureDifference（温度差警告）
 - WeakSignal（信号弱）
 
+## 🔧 Raspberry Pi API 統合
+
+このアプリケーションは Raspberry Pi 上で動作するリモートコントローラー API と統合可能です。
+
+### API 仕様
+
+Raspberry Pi 側で以下のエンドポイントを提供する必要があります：
+
+| エンドポイント | メソッド | 説明 | レスポンス例 |
+|---|---|---|---|
+| `/` | GET | 動作確認 | `{"status": "200", "body": "This is test."}` |
+| `/control/power` | GET | 電源状態取得 | `{"status": "200", "body": true}` |
+| `/control/temperature/up` | GET | 温度+1 | `{"status": "200", "body": 25}` |
+| `/control/temperature/down` | GET | 温度-1 | `{"status": "200", "body": 23}` |
+| `/info/room` | GET | ルーム情報 | `{"status": "200", "room": "303", "usr": "田中様", "temperature": 24, "power": true}` |
+| `/info/settings` | GET | デバイス情報 | `{"status": "200", "id": "00001", "Hard_name": "raspberrypi 3B", "room": "303"}` |
+
+### 環境変数設定
+
+`.env.local` ファイルを作成して Raspberry Pi の IP アドレスを設定：
+
+```env
+# Raspberry Pi API の URL
+NEXT_PUBLIC_PI_API_URL=http://192.168.1.100:8000
+```
+
+### 動作モード
+
+- **実機モード**: `NEXT_PUBLIC_PI_API_URL` が設定されている場合、実際の Raspberry Pi API を呼び出し
+- **モックモード**: 環境変数が未設定の場合、従来のモックデータを使用
+
+### 統合された機能
+
+✅ **温度制御**: +1/-1 ボタンで直接 Pi API を呼び出し  
+✅ **部屋情報取得**: Pi から実際のデバイス情報を取得  
+✅ **エラーハンドリング**: Pi API が応答しない場合はモックデータにフォールバック  
+✅ **タイムアウト**: 10秒でタイムアウト、長時間待機を防止  
+
 ## 🌐 API仕様
 
 ### GET `/api/hotels`

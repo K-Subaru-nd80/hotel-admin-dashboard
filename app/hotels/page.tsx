@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Hotel, Room, Command } from '@/types';
+import { Hotel, Room } from '@/types';
 import { HotelSelector } from '@/components/HotelSelector';
 import { RoomCard } from '@/components/RoomCard';
 import { RoomDetailModal } from '@/components/RoomDetailModal';
@@ -84,7 +84,7 @@ export default function HotelsPage() {
     setFilteredRooms(filtered);
   }, [rooms, searchTerm, statusFilter]);
 
-  const handleSendCommand = async (roomId: string, command: { type: string; payload: any }) => {
+  const handleSendCommand = async (roomId: string, command: { type: string; payload: Record<string, unknown> }) => {
     try {
       const response = await fetch(`/api/rooms/${roomId}/commands`, {
         method: 'POST',
@@ -129,7 +129,7 @@ export default function HotelsPage() {
                 
                 // Update device temperature if it's a temperature command
                 const updatedDevice = command.type === 'set_temperature' 
-                  ? { ...room.device, set_temperature_c: command.payload.temperature_c }
+                  ? { ...room.device, set_temperature_c: typeof command.payload.temperature_c === 'number' ? command.payload.temperature_c : room.device.set_temperature_c }
                   : room.device;
 
                 return { ...room, commands: updatedCommands, device: updatedDevice };
@@ -149,7 +149,7 @@ export default function HotelsPage() {
               );
               
               const updatedDevice = command.type === 'set_temperature' 
-                ? { ...prevRoom.device, set_temperature_c: command.payload.temperature_c }
+                ? { ...prevRoom.device, set_temperature_c: typeof command.payload.temperature_c === 'number' ? command.payload.temperature_c : prevRoom.device.set_temperature_c }
                 : prevRoom.device;
 
               return { ...prevRoom, commands: updatedCommands, device: updatedDevice };
