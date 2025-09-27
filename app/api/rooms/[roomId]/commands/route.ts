@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeTemperatureCommand, PiApiConfig } from '@/services/raspberryPiApi';
+import { executeTemperatureCommand, setTargetTemperature, PiApiConfig } from '@/services/raspberryPiApi';
 
 export async function POST(
   request: NextRequest,
@@ -7,7 +7,7 @@ export async function POST(
 ) {
   const { roomId } = await params;
   const body = await request.json();
-  const { type, payload } = body;
+  const { type, payload, action, temperature } = body;
   
   const commandId = `cmd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
@@ -15,30 +15,35 @@ export async function POST(
   try {
     let result: { success: boolean; newTemperature?: number; error?: string };
     
-    switch (type) {
+    // 新しいactionベース、旧typeベース両方に対応
+    const commandType = action || type;
+    const targetTemp = temperature || payload?.temperature_c;
+    
+    switch (commandType) {
       case 'set_temperature':
-        // 温度設定: 現在温度との差分で up/down を判定
-        const currentTemp = payload.current_temperature || 24;
-        const targetTemp = payload.temperature_c || 24;
+      case 'set':
+        // 目標温度設定: 段階的に調整
+        const targetTempValue = targetTemp || 24;
+        const targetResult = await setTargetTemperature(roomId, targetTempValue);
         
-        if (targetTemp > currentTemp) {
-          result = await executeTemperatureCommand(roomId, 'increase');
-        } else if (targetTemp < currentTemp) {
-          result = await executeTemperatureCommand(roomId, 'decrease');
-        } else {
-          result = { success: true, newTemperature: currentTemp };
-        }
+        result = {
+          success: targetResult.success,
+          newTemperature: targetResult.finalTemperature,
+          error: targetResult.error,
+        };
         break;
         
       case 'temperature_up':
+      case 'increase':
         result = await executeTemperatureCommand(roomId, 'increase');
         break;
         
       case 'temperature_down':
+      case 'decrease':
         result = await executeTemperatureCommand(roomId, 'decrease');
         break;
         
-      default:
+        default:
         // 未対応のコマンドタイプの場合はモック応答
         if (PiApiConfig.isMockMode) {
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -47,21 +52,21 @@ export async function POST(
           return NextResponse.json({
             command_id: commandId,
             status: 'failed',
-            type,
-            payload,
-            error: `Unsupported command type: ${type}`,
+            type: commandType,
+            payload: payload || { action, temperature },
+            error: `Unsupported command type: ${commandType}`,
             scheduled_at: new Date().toISOString(),
           }, { status: 400 });
         }
-    }
-    
-    if (result.success) {
+    }    if (result.success) {
       return NextResponse.json({
         command_id: commandId,
         status: 'completed',
-        type,
+        type: commandType,
         payload: {
-          ...payload,
+          ...(payload || {}),
+          action,
+          temperature,
           ...(result.newTemperature && { actual_temperature: result.newTemperature }),
         },
         scheduled_at: new Date().toISOString(),
@@ -71,8 +76,8 @@ export async function POST(
       return NextResponse.json({
         command_id: commandId,
         status: 'failed',
-        type,
-        payload,
+        type: commandType,
+        payload: payload || { action, temperature },
         error: result.error,
         scheduled_at: new Date().toISOString(),
       }, { status: 500 });
@@ -81,12 +86,15 @@ export async function POST(
   } catch (error) {
     console.error('Command execution failed:', error);
     
+    // 新しいactionベース、旧typeベース両方に対応（エラー時）
+    const commandType = action || type;
+    
     // エラー時はフォールバック（モック応答）
     return NextResponse.json({
       command_id: commandId,
       status: 'failed',
-      type,
-      payload,
+      type: commandType,
+      payload: payload || { action, temperature },
       error: error instanceof Error ? error.message : 'Unknown error',
       scheduled_at: new Date().toISOString(),
     }, { status: 500 });

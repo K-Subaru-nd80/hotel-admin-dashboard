@@ -209,6 +209,72 @@ export async function executeTemperatureCommand(
 }
 
 /**
+ * 目標温度まで段階的に調整する
+ */
+export async function setTargetTemperature(
+  roomId: string,
+  targetTemperature: number
+): Promise<{ success: boolean; finalTemperature?: number; stepsCompleted?: number; error?: string }> {
+  try {
+    // 現在温度を取得
+    const roomInfo = await getRoomInfo();
+    if (roomInfo.status !== '200') {
+      return {
+        success: false,
+        error: `Failed to get current temperature: ${roomInfo.status}`,
+      };
+    }
+
+    let currentTemp = roomInfo.temparature;
+    const startTemp = currentTemp;
+    let stepsCompleted = 0;
+    const maxSteps = 10; // 無限ループ防止
+
+    console.log(`Temperature adjustment: ${startTemp}°C → ${targetTemperature}°C`);
+
+    // 目標温度まで1度ずつ調整
+    while (currentTemp !== targetTemperature && stepsCompleted < maxSteps) {
+      const action = targetTemperature > currentTemp ? 'increase' : 'decrease';
+      const result = await executeTemperatureCommand(roomId, action);
+
+      if (!result.success) {
+        return {
+          success: false,
+          error: `Failed at step ${stepsCompleted + 1}: ${result.error}`,
+          stepsCompleted,
+          finalTemperature: currentTemp,
+        };
+      }
+
+      if (result.newTemperature !== undefined) {
+        currentTemp = result.newTemperature;
+        stepsCompleted++;
+        
+        console.log(`Step ${stepsCompleted}: ${currentTemp}°C`);
+        
+        // 短い待機時間を追加（API負荷軽減）
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        break; // 温度が変わらない場合は終了
+      }
+    }
+
+    return {
+      success: true,
+      finalTemperature: currentTemp,
+      stepsCompleted,
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stepsCompleted: 0,
+    };
+  }
+}
+
+/**
  * 開発・テスト用の設定
  */
 export const PiApiConfig = {
