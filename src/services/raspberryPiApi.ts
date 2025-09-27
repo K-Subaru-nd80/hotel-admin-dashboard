@@ -21,7 +21,7 @@ export interface RoomInfoResponse {
   status: string;
   room: string;
   usr: string;
-  temperature: number;
+  temparature: number; // スペルミスがあるが実際のAPIに合わせる
   power: boolean;
 }
 
@@ -141,8 +141,8 @@ export async function getRoomData(roomId: string): Promise<{
         id: `dev_${roomInfo.room}`,
         model: settings.Hard_name,
         status: 'online', // Pi API が応答していれば online とみなす
-        set_temperature_c: roomInfo.temperature,
-        actual_temperature_c: roomInfo.temperature, // Pi API では実測温度は別途取得が必要
+        set_temperature_c: roomInfo.temparature,
+        actual_temperature_c: roomInfo.temparature, // Pi API では実測温度は別途取得が必要
         last_seen: new Date().toISOString(),
         signal_strength: -50, // 固定値（Pi API には含まれない）
       },
@@ -151,7 +151,7 @@ export async function getRoomData(roomId: string): Promise<{
         guest_masked: roomInfo.usr,
         check_in: new Date().toISOString(),
         preferences: {
-          temperature_c: roomInfo.temperature,
+          temperature_c: roomInfo.temparature,
         },
       } : null,
       commands: [], // コマンド履歴は別途管理が必要
